@@ -5,7 +5,6 @@
  *
  * @package PhpMyAdmin
  */
-use PMA\libraries\URL;
 
 /**
  * Get some core libraries
@@ -14,11 +13,14 @@ require_once 'libraries/common.inc.php';
 require_once 'libraries/create_addfield.lib.php';
 
 // Check parameters
-PMA\libraries\Util::checkParameters(array('db'));
+PMA_Util::checkParameters(array('db'));
+
+/** @var PMA_String $pmaString */
+$pmaString = $GLOBALS['PMA_String'];
 
 /* Check if database name is empty */
-if (mb_strlen($db) == 0) {
-    PMA\libraries\Util::mysqlDie(
+if (/*overload*/mb_strlen($db) == 0) {
+    PMA_Util::mysqlDie(
         __('The database name is empty!'), '', false, 'index.php'
     );
 }
@@ -27,7 +29,7 @@ if (mb_strlen($db) == 0) {
  * Selects the database to work with
  */
 if (!$GLOBALS['dbi']->selectDb($db)) {
-    PMA\libraries\Util::mysqlDie(
+    PMA_Util::mysqlDie(
         sprintf(__('\'%s\' database does not exist.'), htmlspecialchars($db)),
         '',
         false,
@@ -37,11 +39,11 @@ if (!$GLOBALS['dbi']->selectDb($db)) {
 
 if ($GLOBALS['dbi']->getColumns($db, $table)) {
     // table exists already
-    PMA\libraries\Util::mysqlDie(
+    PMA_Util::mysqlDie(
         sprintf(__('Table %s already exists!'), htmlspecialchars($table)),
         '',
         false,
-        'db_structure.php' . URL::getCommon(array('db' => $db))
+        'db_structure.php' . PMA_URL_getCommon(array('db' => $db))
     );
 }
 
@@ -74,7 +76,7 @@ if (isset($_REQUEST['do_save_data'])) {
         ) {
             foreach ($_REQUEST['field_mimetype'] as $fieldindex => $mimetype) {
                 if (isset($_REQUEST['field_name'][$fieldindex])
-                    && mb_strlen($_REQUEST['field_name'][$fieldindex])
+                    && /*overload*/mb_strlen($_REQUEST['field_name'][$fieldindex])
                 ) {
                     PMA_setMIME(
                         $db, $table,
@@ -88,8 +90,8 @@ if (isset($_REQUEST['do_save_data'])) {
             }
         }
     } else {
-        $response = PMA\libraries\Response::getInstance();
-        $response->setRequestStatus(false);
+        $response = PMA_Response::getInstance();
+        $response->isSuccess(false);
         $response->addJSON('message', $GLOBALS['dbi']->getError());
     }
     exit;
@@ -102,3 +104,5 @@ $GLOBAL['table'] = '';
  * Displays the form used to define the structure of the table
  */
 require 'libraries/tbl_columns_definition_form.inc.php';
+
+?>

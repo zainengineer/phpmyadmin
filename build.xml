@@ -55,7 +55,7 @@
    <arg line="${source_comma_sep}
               xml
               codesize,design,naming,unusedcode
-              --exclude test,build,bfShapeFiles,PMAStandard,vendor
+              --exclude test,build,tcpdf,php-gettext,bfShapeFiles,PMAStandard,phpseclib,recaptchalib.php,swekey.php,vendor
               --reportfile '${basedir}/build/logs/pmd.xml'" />
   </exec>
  </target>
@@ -67,7 +67,12 @@
               --exclude PMAStandard
               --exclude build
               --exclude vendor
+              --exclude libraries/tcpdf
+              --exclude libraries/php-gettext
               --exclude libraries/bfShapeFiles
+              --exclude libraries/phpseclib
+              --exclude libraries/plugins/auth/recaptchalib.php
+              --exclude libraries/plugins/auth/swekey/swekey.php
               ${source}" />
   </exec>
  </target>
@@ -79,7 +84,12 @@
               --exclude PMAStandard
               --exclude build
               --exclude vendor
+              --exclude libraries/tcpdf
+              --exclude libraries/php-gettext
               --exclude libraries/bfShapeFiles
+              --exclude libraries/phpseclib
+              --exclude libraries/plugins/auth/recaptchalib.php
+              --exclude libraries/plugins/auth/swekey/swekey.php
               ${source}" />
   </exec>
  </target>
@@ -87,7 +97,7 @@
  <target name="phpcs" description="Generate checkstyle.xml using PHP_CodeSniffer excluding third party libraries">
   <exec executable="phpcs">
    <arg line="
-              --ignore=*/vendor/*,*/canvg/*,*/codemirror/*,*/openlayers/*,*/jquery/*,*/jqplot/*,*/build/*,*/bfShapeFiles/*,*/PMAStandard/*
+              --ignore=*/php-gettext/*,*/vendor/*,*/tcpdf/*,*/canvg/*,*/codemirror/*,*/openlayers/*,*/jquery/*,*/jqplot/*,*/build/*,*/bfShapeFiles/*,*/PMAStandard/*,*/phpseclib/*,*/recaptchalib.php,*/swekey.php
               --report=checkstyle
               --extensions=php
               --report-file='${basedir}/build/logs/checkstyle.xml'
@@ -139,12 +149,11 @@
  </target>
 
  <target name="lint" description="Perform syntax check of sourcecode files">
-  <apply executable="php" failonerror="true">
+  <apply executable="php" failonerror="true" output="${basedir}/build/logs/lint.log" logError="true">
    <arg value="-l" />
 
    <fileset dir="${basedir}">
     <include name="libraries/**/*.php" />
-    <include name="templates/**/*.phtml" />
     <include name="setup/**/*.php" />
     <include name="test/**/*.php" />
     <include name="*.php" />

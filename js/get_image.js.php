@@ -6,33 +6,32 @@
  *
  * @package PhpMyAdmin
  */
+chdir('..');
 
-if (!defined('TESTSUITE')) {
-    chdir('..');
+// Send correct type:
+header('Content-Type: text/javascript; charset=UTF-8');
+header('Expires: ' . gmdate('D, d M Y H:i:s', time() + 3600) . ' GMT');
 
-    // Send correct type:
-    header('Content-Type: text/javascript; charset=UTF-8');
-    header('Expires: ' . gmdate('D, d M Y H:i:s', time() + 3600) . ' GMT');
+// Avoid loading the full common.inc.php because this would add many
+// non-js-compatible stuff like DOCTYPE
+define('PMA_MINIMUM_COMMON', true);
+require_once './libraries/common.inc.php';
 
-    // Avoid loading the full common.inc.php because this would add many
-    // non-js-compatible stuff like DOCTYPE
-    define('PMA_MINIMUM_COMMON', true);
-    require_once './libraries/common.inc.php';
-}
-
-$buffer = PMA\libraries\OutputBuffering::getInstance();
+require_once './libraries/OutputBuffering.class.php';
+$buffer = PMA_OutputBuffering::getInstance();
 $buffer->start();
-if (!defined('TESTSUITE')) {
-    register_shutdown_function(
-        function () {
-            echo PMA\libraries\OutputBuffering::getInstance()->getContents();
-        }
-    );
-}
+register_shutdown_function(function() {
+    echo PMA_OutputBuffering::getInstance()->getContents();
+});
 
 // Get the data for the sprites, if it's available
-$sprites = $_SESSION['PMA_Theme']->getSpriteData();
-
+if (is_readable($_SESSION['PMA_Theme']->getPath() . '/sprites.lib.php')) {
+    include $_SESSION['PMA_Theme']->getPath() . '/sprites.lib.php';
+}
+$sprites = array();
+if (function_exists('PMA_sprites')) {
+    $sprites = PMA_sprites();
+}
 // We only need the keys from the array of sprites data,
 // since they contain the (partial) class names
 $keys = array();
@@ -68,7 +67,7 @@ function PMA_getImage(image, alternate, attributes) {
         return false;
     };
     var sprites = [
-        <?php echo implode($keys, ",\n        ") , "\n"; ?>
+        <?php echo implode($keys, ",\n        ") . "\n"; ?>
     ];
     // custom image object, it will eventually be returned by this functions
     var retval = {
@@ -137,9 +136,7 @@ function PMA_getImage(image, alternate, attributes) {
         if (i == 'src') {
             // do not allow to override the 'src' attribute
             continue;
-        }
-
-        if (i == 'class') {
+        } else if (i == 'class') {
             retval.attr(i, retval.attr('class') + ' ' + attributes[i]);
         } else {
             retval.attr(i, attributes[i]);

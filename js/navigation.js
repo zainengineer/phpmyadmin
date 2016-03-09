@@ -6,114 +6,6 @@
  */
 
 /**
- * updates the tree state in sessionStorage
- *
- * @returns void
- */
-function navTreeStateUpdate() {
-    // update if session storage is supported
-    if (isStorageSupported('sessionStorage')) {
-        var storage = window.sessionStorage;
-        // try catch necessary here to detect whether
-        // content to be stored exceeds storage capacity
-        try {
-            storage.setItem('navTreePaths', JSON.stringify(traverseNavigationForPaths()));
-            storage.setItem('server', PMA_commonParams.get('server'));
-            storage.setItem('token', PMA_commonParams.get('token'));
-        } catch(error) {
-            // storage capacity exceeded & old navigation tree
-            // state is no more valid, so remove it
-            storage.removeItem('navTreePaths');
-            storage.removeItem('server');
-            storage.removeItem('token');
-        }
-    }
-}
-
-
-/**
- * updates the filter state in sessionStorage
- *
- * @returns void
- */
-function navFilterStateUpdate(filterName, filterValue) {
-    if (isStorageSupported('sessionStorage')) {
-        var storage = window.sessionStorage;
-        try {
-            var currentFilter = $.extend({}, JSON.parse(storage.getItem('navTreeSearchFilters')));
-            var filter = {};
-            filter[filterName] = filterValue;
-            currentFilter = $.extend(currentFilter, filter);
-            storage.setItem('navTreeSearchFilters', JSON.stringify(currentFilter));
-        } catch (error) {
-            storage.removeItem('navTreeSearchFilters');
-        }
-    }
-}
-
-
-/**
- * restores the filter state on navigation reload
- *
- * @returns void
- */
-function navFilterStateRestore() {
-    if (isStorageSupported('sessionStorage')
-        && typeof window.sessionStorage.navTreeSearchFilters !== 'undefined'
-    ) {
-        var searchClauses = JSON.parse(window.sessionStorage.navTreeSearchFilters);
-        if (Object.keys(searchClauses).length < 1) {
-            return;
-        }
-        // restore database filter if present and not empty
-        if (searchClauses.hasOwnProperty("dbFilter")
-            && searchClauses.dbFilter.length
-        ) {
-            $obj = $('#pma_navigation_tree');
-            if (! $obj.data('fastFilter')) {
-                $obj.data(
-                    'fastFilter',
-                    new PMA_fastFilter.filter($obj, "")
-                );
-            }
-            $obj.find('li.fast_filter.db_fast_filter input.searchClause')
-                .val(searchClauses.dbFilter)
-                .trigger('keyup');
-        }
-        // find all table filters present in the tree
-        $tableFilters = $('#pma_navigation_tree li.database')
-            .children('div.list_container')
-            .find('li.fast_filter input.searchClause');
-        // restore table filters
-        $tableFilters.each(function () {
-            $obj = $(this).closest('div.list_container');
-            // aPath associated with this filter
-            var filterName = $(this).siblings('input[name=aPath]').val();
-            // if this table's filter has a state stored in storage
-            if (searchClauses.hasOwnProperty(filterName)
-                && searchClauses[filterName].length
-            ) {
-                // clear state if item is not visible,
-                // happens when table filter becomes invisible
-                // as db filter has already been applied
-                if (! $obj.is(":visible")) {
-                    navFilterStateUpdate(filterName, "");
-                    return true;
-                }
-                if (! $obj.data('fastFilter')) {
-                    $obj.data(
-                        'fastFilter',
-                        new PMA_fastFilter.filter($obj, "")
-                    );
-                }
-                $(this).val(searchClauses[filterName])
-                    .trigger('keyup');
-            }
-        });
-    }
-}
-
-/**
  * Loads child items of a node and executes a given callback
  *
  * @param isNode
@@ -176,8 +68,11 @@ function loadChildNodes(isNode, $expandElem, callback) {
                     })
                     .slideDown('slow');
             }
+            if (data._debug){
+                $('#session_debug').replaceWith(data._debug);
+            }
             if (data._errors) {
-                var $errors = $(data._errors);
+                $errors = $(data._errors);
                 if ($errors.children().length > 0) {
                     $('#pma_errors').replaceWith(data._errors);
                 }
@@ -186,16 +81,12 @@ function loadChildNodes(isNode, $expandElem, callback) {
                 callback(data);
             }
         } else if(data.redirect_flag == "1") {
-            if (window.location.href.indexOf('?') === -1) {
-                window.location.href += '?session_expired=1';
-            } else {
-                window.location.href += '&session_expired=1';
-            }
+            window.location.href += '&session_expired=1';
             window.location.reload();
         } else {
             var $throbber = $expandElem.find('img.throbber');
             $throbber.hide();
-            var $icon = $expandElem.find('img.ic_b_plus');
+            $icon = $expandElem.find('img.ic_b_plus');
             $icon.show();
             PMA_ajaxShowMessage(data.error, false);
         }
@@ -231,7 +122,7 @@ function collapseTreeNode($expandElem) {
  */
 function traverseNavigationForPaths() {
     var params = {
-        pos: $('#pma_navigation_tree').find('div.dbselector select').val()
+        pos: $('#pma_navigation_tree div.dbselector select').val()
     };
     if ($('#navi_db_select').length) {
         return params;
@@ -313,7 +204,7 @@ $(function () {
         // reload icon object
         var $icon = $(this).find('img');
         // source of the hidden throbber icon
-        var icon_throbber_src = $('#pma_navigation').find('.throbber').attr('src');
+        var icon_throbber_src = $('#pma_navigation .throbber').attr('src');
         // source of the reload icon
         var icon_reload_src = $icon.attr('src');
         // replace the source of the reload icon with the one for throbber
@@ -326,10 +217,6 @@ $(function () {
     });
 
     $(document).on("change", '#navi_db_select',  function (event) {
-        if (! $(this).val()) {
-            PMA_commonParams.set('db', '');
-            PMA_reloadNavigation();
-        }
         $(this).closest('form').trigger('submit');
     });
 
@@ -339,7 +226,7 @@ $(function () {
      */
     $(document).on('click', '#pma_navigation_collapse', function (event) {
         event.preventDefault();
-        $('#pma_navigation_tree').find('a.expander').each(function() {
+        $('#pma_navigation_tree a.expander').each(function() {
             var $icon = $(this).find('img');
             if ($icon.is('.ic_b_minus')) {
                 $(this).click();
@@ -413,6 +300,7 @@ $(function () {
     $(document).on('focus', '#pma_navigation_tree li.fast_filter input.searchClause', PMA_fastFilter.events.focus);
     $(document).on('blur', '#pma_navigation_tree li.fast_filter input.searchClause', PMA_fastFilter.events.blur);
     $(document).on('keyup', '#pma_navigation_tree li.fast_filter input.searchClause', PMA_fastFilter.events.keyup);
+    $(document).on('mouseover', '#pma_navigation_tree li.fast_filter input.searchClause', PMA_fastFilter.events.mouseover);
 
     /**
      * Ajax handler for pagination
@@ -459,12 +347,13 @@ $(function () {
         dialog.editorDialog(1, $(this));
     });
 
-    /** Edit Routines, Triggers or Events */
+    /** Execute Routines */
     $(document).on('click', 'li.procedure > a.ajax, li.function > a.ajax', function (event) {
         event.preventDefault();
         var dialog = new RTE.object('routine');
-        dialog.editorDialog(0, $(this));
+        dialog.executeDialog($(this));
     });
+    /** Edit Triggers and Events */
     $(document).on('click', 'li.trigger > a.ajax', function (event) {
         event.preventDefault();
         var dialog = new RTE.object('trigger');
@@ -476,16 +365,15 @@ $(function () {
         dialog.editorDialog(0, $(this));
     });
 
-    /** Execute Routines */
+    /** Edit Routines */
     $(document).on('click', 'li.procedure div a.ajax img,' +
         ' li.function div a.ajax img', function (event) {
         event.preventDefault();
         var dialog = new RTE.object('routine');
-        dialog.executeDialog($(this).parent());
+        dialog.editorDialog(0, $(this).parent());
     });
     /** Export Triggers and Events */
-    $(document).on('click', 'li.trigger div:eq(1) a.ajax img,' +
-        ' li.event div:eq(1) a.ajax img', function (event) {
+    $(document).on('click', 'li.trigger div:eq(1) a.ajax img, li.event div:eq(1) a.ajax img', function (event) {
         event.preventDefault();
         var dialog = new RTE.object();
         dialog.exportDialog($(this).parent());
@@ -521,7 +409,6 @@ $(function () {
     $(document).on('click', 'a.hideNavItem.ajax', function (event) {
         event.preventDefault();
         $.ajax({
-            type: 'POST',
             url: $(this).attr('href') + '&ajax_request=true',
             success: function (data) {
                 if (typeof data !== 'undefined' && data.success === true) {
@@ -569,7 +456,6 @@ $(function () {
         var $tr = $(this).parents('tr');
         var $msg = PMA_ajaxShowMessage();
         $.ajax({
-            type: 'POST',
             url: $(this).attr('href') + '&ajax_request=true',
             success: function (data) {
                 PMA_ajaxRemoveMessage($msg);
@@ -601,7 +487,7 @@ $(function () {
             cache: false,
             type: 'POST',
             data: {
-                favorite_tables: (isStorageSupported('localStorage') && typeof window.localStorage.favorite_tables !== 'undefined')
+                favorite_tables: (isStorageSupported('localStorage'))
                     ? window.localStorage.favorite_tables
                     : ''
             },
@@ -624,6 +510,7 @@ $(function () {
             }
         });
     });
+
     // Check if session storage is supported
     if (isStorageSupported('sessionStorage')) {
         var storage = window.sessionStorage;
@@ -632,18 +519,43 @@ $(function () {
             storage.removeItem('navTreePaths');
         });
         // Initialize if no previous state is defined
-        if ($('#pma_navigation_tree_content').length &&
-            typeof storage.navTreePaths === 'undefined'
+        if ($('#pma_navigation_tree_content').length
+            && typeof storage.navTreePaths === 'undefined'
         ) {
             navTreeStateUpdate();
         } else if (PMA_commonParams.get('server') === storage.server &&
             PMA_commonParams.get('token') === storage.token
         ) {
             // Reload the tree to the state before page refresh
-            PMA_reloadNavigation(navFilterStateRestore, JSON.parse(storage.navTreePaths));
+            PMA_reloadNavigation(null, JSON.parse(storage.navTreePaths));
         }
     }
 });
+
+/**
+ * updates the tree state in sessionStorage
+ *
+ * @returns void
+ */
+function navTreeStateUpdate() {
+    // update if session storage is supported
+    if (isStorageSupported('sessionStorage')) {
+        var storage = window.sessionStorage;
+        // try catch necessary here to detect whether
+        // content to be stored exceeds storage capacity
+        try {
+            storage.setItem('navTreePaths', JSON.stringify(traverseNavigationForPaths()));
+            storage.setItem('server', PMA_commonParams.get('server'));
+            storage.setItem('token', PMA_commonParams.get('token'));
+        } catch(error) {
+            // storage capacity exceeded & old navigation tree
+            // state is no more valid, so remove it
+            storage.removeItem('navTreePaths');
+            storage.removeItem('server');
+            storage.removeItem('token');
+        }
+    }
+}
 
 /**
  * Expands a node in navigation tree.
@@ -666,7 +578,7 @@ function expandTreeNode($expandElem, callback) {
         }
         $children.promise().done(navTreeStateUpdate);
     } else {
-        var $throbber = $('#pma_navigation').find('.throbber')
+        var $throbber = $('#pma_navigation .throbber')
             .first()
             .clone()
             .css({visibility: 'visible', display: 'block'})
@@ -708,7 +620,6 @@ function expandTreeNode($expandElem, callback) {
  *
  */
 function scrollToView($element, $forceToTop) {
-    navFilterStateRestore();
     var $container = $('#pma_navigation_tree_content');
     var elemTop = $element.offset().top - $container.offset().top;
     var textHeight = 20;
@@ -737,27 +648,9 @@ function PMA_showCurrentNavigation() {
         .removeClass('selected');
     if (db) {
         var $dbItem = findLoadedItem(
-            $('#pma_navigation_tree').find('> div'), db, 'database', !table
+            $('#pma_navigation_tree > div'), db, 'database', !table
         );
-        if ($('#navi_db_select').length &&
-            $('option:selected', $('#navi_db_select')).length
-        ) {
-            if (! PMA_selectCurrentDb()) {
-                return;
-            }
-            // If loaded database in navigation is not same as current one
-            if ($('#pma_navigation_tree_content').find('span.loaded_db:first').text()
-                !== $('#navi_db_select').val()
-            ) {
-                loadChildNodes(false, $('option:selected', $('#navi_db_select')), function (data) {
-                    handleTableOrDb(table, $('#pma_navigation_tree_content'));
-                    var $children = $('#pma_navigation_tree_content').children('div.list_container');
-                    $children.promise().done(navTreeStateUpdate);
-                });
-            } else {
-                handleTableOrDb(table, $('#pma_navigation_tree_content'));
-            }
-        } else if ($dbItem) {
+        if ($dbItem) {
             var $expander = $dbItem.children('div:first').children('a.expander');
             // if not loaded or loaded but collapsed
             if (! $expander.hasClass('loaded') ||
@@ -769,9 +662,25 @@ function PMA_showCurrentNavigation() {
             } else {
                 handleTableOrDb(table, $dbItem);
             }
+        } else if ($('#navi_db_select').length
+                && $('option:selected', $('#navi_db_select')).length
+        ) {
+            if (! PMA_selectCurrentDb()) {
+                return;
+            }
+            // If loaded database in navigation is not same as current one
+            if ( $('#pma_navigation_tree_content span.loaded_db:first').text()
+                !== $('#navi_db_select').val()
+            ) {
+                loadChildNodes(false, $('option:selected', $('#navi_db_select')), function (data) {
+                    handleTableOrDb(table, $('#pma_navigation_tree_content'));
+                    var $children = $('#pma_navigation_tree_content').children('div.list_container');
+                    $children.promise().done(navTreeStateUpdate);
+                });
+            } else {
+                handleTableOrDb(table, $('#pma_navigation_tree_content'));
+            }
         }
-    } else if ($('#navi_db_select').length && $('#navi_db_select').val()) {
-        $('#navi_db_select').val('').hide().trigger('change');
     }
     PMA_showFullName($('#pma_navigation_tree'));
 
@@ -816,7 +725,7 @@ function PMA_showCurrentNavigation() {
                     }
                     // taverse up and expand and parent navigation groups
                     $li.parents('.navGroup').each(function () {
-                        var $cont = $(this).children('div.list_container');
+                        $cont = $(this).children('div.list_container');
                         if (! $cont.is(':visible')) {
                             $(this)
                                 .children('div:first')
@@ -860,7 +769,7 @@ function PMA_showCurrentNavigation() {
                         .children('div:first')
                         .children('a.expander');
                     if (! $expander.hasClass('loaded')) {
-                        loadAndShowTableOrView($expander, $containers[index], itemName);
+                    	loadAndShowTableOrView($expander, $containers[index], itemName);
                     }
                 });
             // else if no subContainers
@@ -869,7 +778,7 @@ function PMA_showCurrentNavigation() {
                     .children('div:first')
                     .children('a.expander');
                 if (! $expander.hasClass('loaded')) {
-                    loadAndShowTableOrView($expander, $dbItem, itemName);
+                	loadAndShowTableOrView($expander, $dbItem, itemName);
                 }
             }
         }
@@ -911,46 +820,6 @@ function PMA_showCurrentNavigation() {
 }
 
 /**
- * Disable navigation panel settings
- *
- * @return void
- */
-function PMA_disableNaviSettings() {
-    $('#pma_navigation_settings_icon').addClass('hide');
-    $('#pma_navigation_settings').remove();
-}
-
-/**
- * Ensure that navigation panel settings is properly setup.
- * If not, set it up
- *
- * @return void
- */
-function PMA_ensureNaviSettings(selflink) {
-    $('#pma_navigation_settings_icon').removeClass('hide');
-
-    if (!$('#pma_navigation_settings').length) {
-        var params = {
-            getNaviSettings: true
-        };
-        var url = $('#pma_navigation').find('a.navigation_url').attr('href');
-        $.post(url, params, function (data) {
-            if (typeof data !== 'undefined' && data.success) {
-                $('#pma_navi_settings_container').html(data.message);
-                setupRestoreField();
-                setupValidation();
-                setupConfigTabs();
-                $('#pma_navigation_settings').find('form').attr('action', selflink);
-            } else {
-                PMA_ajaxShowMessage(data.error);
-            }
-        });
-    } else {
-        $('#pma_navigation_settings').find('form').attr('action', selflink);
-    }
-}
-
-/**
  * Reloads the whole navigation tree while preserving its state
  *
  * @param  function     the callback function
@@ -960,8 +829,7 @@ function PMA_ensureNaviSettings(selflink) {
  */
 function PMA_reloadNavigation(callback, paths) {
     var params = {
-        reload: true,
-        no_debug: true
+        reload: true
     };
     paths = paths || traverseNavigationForPaths();
     $.extend(params, paths);
@@ -994,19 +862,13 @@ function PMA_reloadNavigation(callback, paths) {
 }
 
 function PMA_selectCurrentDb() {
-    var $naviDbSelect = $('#navi_db_select');
-
-    if (!$naviDbSelect.length) {
-        return false;
+    if ($('#navi_db_select').length) {
+        $('#navi_db_select').val(PMA_commonParams.get('db'));
+        if ($('#navi_db_select').val() !== PMA_commonParams.get('db')) {
+            return false;
+        }
+        return true;
     }
-
-    if (PMA_commonParams.get('db')) { // db selected
-        $naviDbSelect.show();
-    }
-
-    $naviDbSelect.val(PMA_commonParams.get('db'));
-    return $naviDbSelect.val() === PMA_commonParams.get('db');
-
 }
 
 /**
@@ -1043,8 +905,8 @@ function PMA_navigationTreePagination($this) {
         }
     }
     $.post(url, params, function (data) {
+        PMA_ajaxRemoveMessage($msgbox);
         if (typeof data !== 'undefined' && data.success) {
-            PMA_ajaxRemoveMessage($msgbox);
             if (isDbSelector) {
                 var val = PMA_fastFilter.getSearchClause();
                 $('#pma_navigation_tree')
@@ -1074,7 +936,6 @@ function PMA_navigationTreePagination($this) {
             }
         } else {
             PMA_ajaxShowMessage(data.error);
-            PMA_handleRedirectAndReload(data);
         }
         navTreeStateUpdate();
     });
@@ -1392,6 +1253,26 @@ var PMA_fastFilter = {
                 $obj.data('fastFilter').restore();
             }
         },
+        mouseover: function (event) {
+            var message = '';
+            if ($(this).closest('li.fast_filter').is('.db_fast_filter')) {
+                message = PMA_messages.strHoverDbFastFilter;
+            } else {
+                var node_type = $(this).siblings("input[name='pos2_name']").val();
+                var node_name = PMA_messages.strTables;
+                if (node_type == 'views') {
+                    node_name = PMA_messages.strViews;
+                } else if (node_type == 'procedures') {
+                    node_name = PMA_messages.strProcedures;
+                } else if (node_type == 'functions') {
+                    node_name = PMA_messages.strFunctions;
+                } else if (node_type == 'events') {
+                    node_name = PMA_messages.strEvents;
+                }
+                message = PMA_sprintf(PMA_messages.strHoverFastFilter, node_name);
+            }
+            PMA_tooltip($(this), 'input', message);
+        },
         keyup: function (event) {
             var $obj = $(this).closest('div.list_container');
             var str = '';
@@ -1470,14 +1351,6 @@ var PMA_fastFilter = {
             } else if ($obj.data('fastFilter')) {
                 $obj.data('fastFilter').restore(true);
             }
-            // update filter state
-            var filterName;
-            if ($(this).attr('name') == 'searchClause2') {
-                filterName = $(this).siblings('input[name=aPath]').val();
-            } else {
-                filterName = 'dbFilter';
-            }
-            navFilterStateUpdate(filterName, $(this).val());
         },
         clear: function (event) {
             event.stopPropagation();

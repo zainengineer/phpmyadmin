@@ -6,6 +6,9 @@
  * @package PhpMyAdmin-test
  */
 
+require_once 'libraries/php-gettext/gettext.inc';
+require_once 'libraries/url_generating.lib.php';
+
 /*
  * Include to test.
  */
@@ -41,7 +44,7 @@ class PMA_ServerUsers_Test extends PHPUnit_Framework_TestCase
             $html
         );
         $this->assertContains(
-            __('User accounts overview'),
+            __('Users overview'),
             $html
         );
 
@@ -56,3 +59,4 @@ class PMA_ServerUsers_Test extends PHPUnit_Framework_TestCase
         );
     }
 }
+?>

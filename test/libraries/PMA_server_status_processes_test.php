@@ -9,12 +9,15 @@
 /*
  * Include to test.
  */
-use PMA\libraries\Theme;
-use PMA\libraries\URL;
-
-
+require_once 'libraries/Util.class.php';
+require_once 'libraries/php-gettext/gettext.inc';
+require_once 'libraries/url_generating.lib.php';
 require_once 'libraries/server_status_processes.lib.php';
 require_once 'libraries/database_interface.inc.php';
+require_once 'libraries/ServerStatusData.class.php';
+require_once 'libraries/Message.class.php';
+require_once 'libraries/Theme.class.php';
+require_once 'libraries/sanitizing.lib.php';
 
 /**
  * class PMA_ServerStatusProcesses_Test
@@ -41,9 +44,11 @@ class PMA_ServerStatusProcesses_Test extends PHPUnit_Framework_TestCase
         $GLOBALS['pmaThemeImage'] = 'image';
 
         //$_SESSION
+        $_SESSION['PMA_Theme'] = PMA_Theme::load('./themes/pmahomme');
+        $_SESSION['PMA_Theme'] = new PMA_Theme();
 
         //Mock DBI
-        $dbi = $this->getMockBuilder('PMA\libraries\DatabaseInterface')
+        $dbi = $this->getMockBuilder('PMA_DatabaseInterface')
             ->disableOriginalConstructor()
             ->getMock();
 
@@ -51,14 +56,14 @@ class PMA_ServerStatusProcesses_Test extends PHPUnit_Framework_TestCase
     }
 
     /**
-     * Test for PMA_getHtmlForProcessListAutoRefresh
+     * Test for PMA_getHtmlForServerProcesses
      *
      * @return void
      * @group medium
      */
-    public function testPMAGetHtmlForProcessListAutoRefresh()
+    public function testPMAGetHtmlForServerProcesses()
     {
-        $html = PMA_getHtmlForProcessListAutoRefresh();
+        $html = PMA_getHtmlForServerProcesses();
 
         // Test Notice
         $this->assertContains(
@@ -107,6 +112,7 @@ class PMA_ServerStatusProcesses_Test extends PHPUnit_Framework_TestCase
             "Id" => "Id1",
             "db" => "db1",
             "Command" => "Command1",
+            "State" => "State1",
             "Info" => "Info1",
             "State" => "State1",
             "Time" => "Time1"
@@ -184,6 +190,7 @@ class PMA_ServerStatusProcesses_Test extends PHPUnit_Framework_TestCase
             "id" => "Id1",
             "db" => "db1",
             "command" => "Command1",
+            "state" => "State1",
             "info" => "Info1",
             "state" => "State1",
             "time" => "Time1",
@@ -204,7 +211,7 @@ class PMA_ServerStatusProcesses_Test extends PHPUnit_Framework_TestCase
             'ajax_request' => true
         );
         $kill_process = 'server_status_processes.php'
-            . URL::getCommon($url_params);
+            . PMA_URL_getCommon($url_params);
         $this->assertContains(
             $kill_process,
             $html
@@ -269,3 +276,4 @@ class PMA_ServerStatusProcesses_Test extends PHPUnit_Framework_TestCase
         );
     }
 }
+?>

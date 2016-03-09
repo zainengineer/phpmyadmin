@@ -5,13 +5,6 @@
  *
  * @package PhpMyAdmin
  */
-use PMA\libraries\config\ConfigFile;
-use PMA\libraries\config\FormDisplay;
-use PMA\libraries\Message;
-use PMA\libraries\Response;
-use PMA\libraries\Util;
-use PMA\libraries\URL;
-use PMA\libraries\Sanitize;
 
 /**
  * Gets some core libraries and displays a top message if required
@@ -20,6 +13,9 @@ require_once 'libraries/common.inc.php';
 require_once 'libraries/user_preferences.lib.php';
 require_once 'libraries/config/config_functions.lib.php';
 require_once 'libraries/config/messages.inc.php';
+require_once 'libraries/config/ConfigFile.class.php';
+require_once 'libraries/config/Form.class.php';
+require_once 'libraries/config/FormDisplay.class.php';
 require 'libraries/config/user_preferences.forms.php';
 
 $cf = new ConfigFile($GLOBALS['PMA_Config']->base_settings);
@@ -27,11 +23,10 @@ PMA_userprefsPageInit($cf);
 
 $error = '';
 if (isset($_POST['submit_export'])
-    && isset($_POST['export_type'])
-    && $_POST['export_type'] == 'text_file'
+    && filter_input(INPUT_POST, 'export_type') == 'text_file'
 ) {
     // export to JSON file
-    PMA\libraries\Response::getInstance()->disable();
+    PMA_Response::getInstance()->disable();
     $filename = 'phpMyAdmin-config-' . urlencode(PMA_getenv('HTTP_HOST')) . '.json';
     PMA_downloadHeader($filename, 'application/json');
     $settings = PMA_loadUserprefs();
@@ -39,15 +34,14 @@ if (isset($_POST['submit_export'])
     exit;
 } else if (isset($_POST['submit_get_json'])) {
     $settings = PMA_loadUserprefs();
-    $response = PMA\libraries\Response::getInstance();
+    $response = PMA_Response::getInstance();
     $response->addJSON('prefs', json_encode($settings['config_data']));
     $response->addJSON('mtime', $settings['mtime']);
     exit;
 } else if (isset($_POST['submit_import'])) {
     // load from JSON file
     $json = '';
-    if (isset($_POST['import_type'])
-        && $_POST['import_type'] == 'text_file'
+    if (filter_input(INPUT_POST, 'import_type') == 'text_file'
         && isset($_FILES['import_file'])
         && $_FILES['import_file']['error'] == UPLOAD_ERR_OK
         && is_uploaded_file($_FILES['import_file']['tmp_name'])
@@ -62,7 +56,7 @@ if (isset($_POST['submit_export'])
         // directory
         if (!empty($open_basedir)) {
             $tmp_subdir = (PMA_IS_WINDOWS ? '.\\tmp\\' : 'tmp/');
-            if (@is_writable($tmp_subdir)) {
+            if (is_writable($tmp_subdir)) {
                 $import_file_new = tempnam($tmp_subdir, 'prefs');
                 if (move_uploaded_file($import_file, $import_file_new)) {
                     $import_file = $import_file_new;
@@ -76,14 +70,14 @@ if (isset($_POST['submit_export'])
         }
     } else {
         // read from POST value (json)
-        $json = isset($_POST['json']) ? $_POST['json'] : null;
+        $json = filter_input(INPUT_POST, 'json');
     }
 
     // hide header message
     $_SESSION['userprefs_autoload'] = true;
 
     $config = json_decode($json, true);
-    $return_url = isset($_POST['return_url']) ? $_POST['return_url'] : null;
+    $return_url = filter_input(INPUT_POST, 'return_url');
     if (! is_array($config)) {
         $error = __('Could not import configuration');
     } else {
@@ -116,32 +110,32 @@ if (isset($_POST['submit_export'])
         if (!$all_ok) {
             // mimic original form and post json in a hidden field
             include 'libraries/user_preferences.inc.php';
-            $msg = Message::error(
+            $msg = PMA_Message::error(
                 __('Configuration contains incorrect data for some fields.')
             );
             $msg->display();
             echo '<div class="config-form">';
-            echo $form_display->displayErrors();
+            $form_display->displayErrors();
             echo '</div>';
             echo '<form action="prefs_manage.php" method="post">';
-            echo URL::getHiddenInputs() , "\n";
+            echo PMA_URL_getHiddenInputs() . "\n";
             echo '<input type="hidden" name="json" value="'
-                , htmlspecialchars($json) , '" />';
+                . htmlspecialchars($json) . '" />';
             echo '<input type="hidden" name="fix_errors" value="1" />';
             if (! empty($_POST['import_merge'])) {
                 echo '<input type="hidden" name="import_merge" value="1" />';
             }
             if ($return_url) {
                 echo '<input type="hidden" name="return_url" value="'
-                    , htmlspecialchars($return_url) , '" />';
+                    . htmlspecialchars($return_url) . '" />';
             }
             echo '<p>';
             echo __('Do you want to import remaining settings?');
             echo '</p>';
             echo '<input type="submit" name="submit_import" value="'
-                , __('Yes') , '" />';
+                . __('Yes') . '" />';
             echo '<input type="submit" name="submit_ignore" value="'
-                , __('No') , '" />';
+                . __('No') . '" />';
             echo '</form>';
             exit;
         }
@@ -178,13 +172,16 @@ if (isset($_POST['submit_export'])
                 $query = explode('&', parse_url($return_url, PHP_URL_QUERY));
                 $return_url = parse_url($return_url, PHP_URL_PATH);
 
+                /** @var PMA_String $pmaString */
+                $pmaString = $GLOBALS['PMA_String'];
+
                 foreach ($query as $q) {
-                    $pos = mb_strpos($q, '=');
-                    $k = mb_substr($q, 0, $pos);
+                    $pos = /*overload*/mb_strpos($q, '=');
+                    $k = /*overload*/mb_substr($q, 0, $pos);
                     if ($k == 'token') {
                         continue;
                     }
-                    $params[$k] = mb_substr($q, $pos + 1);
+                    $params[$k] = /*overload*/mb_substr($q, $pos+1);
                 }
             } else {
                 $return_url = 'prefs_manage.php';
@@ -214,70 +211,70 @@ if (isset($_POST['submit_export'])
     exit;
 }
 
-$response = Response::getInstance();
+$response = PMA_Response::getInstance();
 $header   = $response->getHeader();
 $scripts = $header->getScripts();
 $scripts->addFile('config.js');
 
 require 'libraries/user_preferences.inc.php';
 if ($error) {
-    if (!$error instanceof Message) {
-        $error = Message::error($error);
+    if (!$error instanceof PMA_Message) {
+        $error = PMA_Message::error($error);
     }
     $error->display();
 }
 ?>
 <script type="text/javascript">
 <?php
-Sanitize::printJsValue("PMA_messages['strSavedOn']", __('Saved on: @DATE@'));
+PMA_printJsValue("PMA_messages['strSavedOn']", __('Saved on: @DATE@'));
 ?>
 </script>
 <div id="maincontainer">
     <div id="main_pane_left">
         <div class="group">
 <?php
-echo '<h2>' , __('Import') , '</h2>'
-    , '<form class="group-cnt prefs-form disableAjax" name="prefs_import"'
-    , ' action="prefs_manage.php" method="post" enctype="multipart/form-data">'
-    , Util::generateHiddenMaxFileSize($GLOBALS['max_upload_size'])
-    , URL::getHiddenInputs()
-    , '<input type="hidden" name="json" value="" />'
-    , '<input type="radio" id="import_text_file" name="import_type"'
-    , ' value="text_file" checked="checked" />'
-    , '<label for="import_text_file">' . __('Import from file') . '</label>'
-    , '<div id="opts_import_text_file" class="prefsmanage_opts">'
-    , '<label for="input_import_file">' , __('Browse your computer:') , '</label>'
-    , '<input type="file" name="import_file" id="input_import_file" />'
-    , '</div>'
-    , '<input type="radio" id="import_local_storage" name="import_type"'
-    , ' value="local_storage" disabled="disabled" />'
-    , '<label for="import_local_storage">'
-    , __('Import from browser\'s storage') , '</label>'
-    , '<div id="opts_import_local_storage" class="prefsmanage_opts disabled">'
-    , '<div class="localStorage-supported">'
-    , __('Settings will be imported from your browser\'s local storage.')
-    , '<br />'
-    , '<div class="localStorage-exists">'
-    , __('Saved on: @DATE@')
-    , '</div>'
-    , '<div class="localStorage-empty">';
-Message::notice(__('You have no saved settings!'))->display();
+echo '<h2>' . __('Import') . '</h2>'
+    . '<form class="group-cnt prefs-form disableAjax" name="prefs_import"'
+    . ' action="prefs_manage.php" method="post" enctype="multipart/form-data">'
+    . PMA_Util::generateHiddenMaxFileSize($GLOBALS['max_upload_size'])
+    . PMA_URL_getHiddenInputs()
+    . '<input type="hidden" name="json" value="" />'
+    . '<input type="radio" id="import_text_file" name="import_type"'
+    . ' value="text_file" checked="checked" />'
+    . '<label for="import_text_file">' . __('Import from file') . '</label>'
+    . '<div id="opts_import_text_file" class="prefsmanage_opts">'
+    . '<label for="input_import_file">' . __('Browse your computer:') . '</label>'
+    . '<input type="file" name="import_file" id="input_import_file" />'
+    . '</div>'
+    . '<input type="radio" id="import_local_storage" name="import_type"'
+    . ' value="local_storage" disabled="disabled" />'
+    . '<label for="import_local_storage">'
+    . __('Import from browser\'s storage') . '</label>'
+    . '<div id="opts_import_local_storage" class="prefsmanage_opts disabled">'
+    . '<div class="localStorage-supported">'
+    . __('Settings will be imported from your browser\'s local storage.')
+    . '<br />'
+    . '<div class="localStorage-exists">'
+    . __('Saved on: @DATE@')
+    . '</div>'
+    . '<div class="localStorage-empty">';
+PMA_Message::notice(__('You have no saved settings!'))->display();
 echo  '</div>'
-    , '</div>'
-    , '<div class="localStorage-unsupported">';
-Message::notice(
+    . '</div>'
+    . '<div class="localStorage-unsupported">';
+PMA_Message::notice(
     __('This feature is not supported by your web browser')
 )->display();
 echo '</div>'
-    , '</div>'
-    , '<input type="checkbox" id="import_merge" name="import_merge" />'
-    , '<label for="import_merge">'
-    , __('Merge with current configuration') . '</label>'
-    , '<br /><br />'
-    , '<input type="submit" name="submit_import" value="'
-    , __('Go') . '" />'
-    , '</form>'
-    , '</div>';
+    . '</div>'
+    . '<input type="checkbox" id="import_merge" name="import_merge" />'
+    . '<label for="import_merge">'
+    . __('Merge with current configuration') . '</label>'
+    . '<br /><br />'
+    . '<input type="submit" name="submit_import" value="'
+    . __('Go') . '" />'
+    . '</form>'
+    . '</div>';
 if (file_exists('setup/index.php')) {
             // show only if setup script is available, allows to disable this message
             // by simply removing setup directory
@@ -291,7 +288,7 @@ if (file_exists('setup/index.php')) {
                         'You can set more settings by modifying config.inc.php, eg. '
                         . 'by using %sSetup script%s.'
                     ), '<a href="setup/index.php" target="_blank">', '</a>'
-                ) , PMA\libraries\Util::showDocu('setup', 'setup-script');
+                ) . PMA_Util::showDocu('setup', 'setup-script');
                 ?>
             </div>
             </div>
@@ -304,14 +301,14 @@ if (file_exists('setup/index.php')) {
             <h2><?php echo __('Export'); ?></h2>
             <div class="click-hide-message group-cnt" style="display:none">
                 <?php
-                Message::rawSuccess(
+                PMA_Message::rawSuccess(
                     __('Configuration has been saved.')
                 )->display();
                 ?>
             </div>
             <form class="group-cnt prefs-form disableAjax" name="prefs_export"
                   action="prefs_manage.php" method="post">
-                <?php echo URL::getHiddenInputs(); ?>
+                <?php echo PMA_URL_getHiddenInputs(); ?>
                 <div style="padding-bottom:0.5em">
                     <input type="radio" id="export_text_file" name="export_type"
                            value="text_file" checked="checked" />
@@ -344,7 +341,7 @@ if (file_exists('setup/index.php')) {
                     </span>
                     <div class="localStorage-unsupported">
                         <?php
-                        Message::notice(
+                        PMA_Message::notice(
                             __('This feature is not supported by your web browser')
                         )->display();
                         ?>
@@ -352,9 +349,9 @@ if (file_exists('setup/index.php')) {
                 </div>
                 <br />
                 <?php
-                echo '<input type="submit" name="submit_export" value="' , __(
+                echo '<input type="submit" name="submit_export" value="' . __(
                     'Go'
-                ) , '" />';
+                ) . '" />';
                 ?>
             </form>
         </div>
@@ -363,7 +360,7 @@ if (file_exists('setup/index.php')) {
             <form class="group-cnt prefs-form disableAjax" name="prefs_reset"
                   action="prefs_manage.php" method="post">
                 <?php
-                echo URL::getHiddenInputs() , __(
+                echo PMA_URL_getHiddenInputs() . __(
                     'You can reset all your settings and restore them to default '
                     . 'values.'
                 );
@@ -376,10 +373,3 @@ if (file_exists('setup/index.php')) {
     </div>
     <br class="clearfloat" />
 </div>
-
-<?php
-if ($response->isAjax()) {
-    $response->addJSON('_disableNaviSettings', true);
-} else {
-    define('PMA_DISABLE_NAVI_SETTINGS', true);
-}

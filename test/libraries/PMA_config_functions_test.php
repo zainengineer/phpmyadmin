@@ -10,6 +10,7 @@
  * Include to test.
  */
 require_once 'libraries/config/config_functions.lib.php';
+require_once 'libraries/sanitizing.lib.php';
 
 /**
  * Tests for Config Functions
@@ -81,3 +82,4 @@ class PMA_Config_Functions_Test extends PHPUnit_Framework_TestCase
     }
 
 }
+?>

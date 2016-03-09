@@ -12,10 +12,9 @@
  * Gets some core libraries
  */
 require_once 'libraries/common.inc.php';
+require_once 'libraries/DbSearch.class.php';
 
-use PMA\libraries\DbSearch;
-
-$response = PMA\libraries\Response::getInstance();
+$response = PMA_Response::getInstance();
 $header   = $response->getHeader();
 $scripts  = $header->getScripts();
 $scripts->addFile('db_search.js');
@@ -25,9 +24,9 @@ $scripts->addFile('jquery/jquery-ui-timepicker-addon.js');
 
 require 'libraries/db_common.inc.php';
 
-// If config variable $GLOBALS['cfg']['UseDbSearch'] is on false : exit.
+// If config variable $GLOBALS['cfg']['Usedbsearch'] is on false : exit.
 if (! $GLOBALS['cfg']['UseDbSearch']) {
-    PMA\libraries\Util::mysqlDie(
+    PMA_Util::mysqlDie(
         __('Access denied!'), '', false, $err_url
     );
 } // end if
@@ -35,26 +34,18 @@ $url_query .= '&amp;goto=db_search.php';
 $url_params['goto'] = 'db_search.php';
 
 // Create a database search instance
-$db_search = new DbSearch($GLOBALS['db']);
+$db_search = new PMA_DbSearch($GLOBALS['db']);
 
 // Display top links if we are not in an Ajax request
-if ($GLOBALS['is_ajax_request'] != true) {
-    list(
-        $tables,
-        $num_tables,
-        $total_num_tables,
-        $sub_part,
-        $is_show_stats,
-        $db_is_system_schema,
-        $tooltip_truename,
-        $tooltip_aliasname,
-        $pos
-    ) = PMA\libraries\Util::getDbInfo($db, isset($sub_part) ? $sub_part : '');
+if ( $GLOBALS['is_ajax_request'] != true) {
+    include 'libraries/db_info.inc.php';
 }
 
 // Main search form has been submitted, get results
 if (isset($_REQUEST['submit_search'])) {
     $response->addHTML($db_search->getSearchResults());
+} else {
+    $response->addHTML('<div id="searchresults"></div>');
 }
 
 // If we are in an Ajax request, we need to exit after displaying all the HTML
@@ -63,10 +54,10 @@ if ($GLOBALS['is_ajax_request'] == true && empty($_REQUEST['ajax_page_request'])
 }
 
 // Display the search form
-$response->addHTML($db_search->getSelectionForm());
-$response->addHTML('<div id="searchresults"></div>');
 $response->addHTML(
     '<div id="togglesearchresultsdiv"><a id="togglesearchresultlink"></a></div>'
+    . '<br class="clearfloat" />'
 );
-$response->addHTML('<br class="clearfloat" />');
+$response->addHTML($db_search->getSelectionForm());
 $response->addHTML($db_search->getResultDivs());
+?>

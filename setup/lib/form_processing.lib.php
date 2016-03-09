@@ -5,8 +5,6 @@
  *
  * @package PhpMyAdmin-Setup
  */
-use PMA\libraries\config\FormDisplay;
-use PMA\libraries\URL;
 
 /**
  * Processes forms registered in $form_display, handles error correction
@@ -25,7 +23,7 @@ function PMA_Process_formset(FormDisplay $form_display)
 
     if (!$form_display->process(false)) {
         // handle form view and failed POST
-        echo $form_display->getDisplay(true, true);
+        $form_display->display(true, true);
         return;
     }
 
@@ -36,7 +34,7 @@ function PMA_Process_formset(FormDisplay $form_display)
     }
 
     // form has errors, show warning
-    $separator = URL::getArgSeparator('html');
+    $separator = PMA_URL_getArgSeparator('html');
     $page = isset($_GET['page']) ? $_GET['page'] : null;
     $formset = isset($_GET['formset']) ? $_GET['formset'] : null;
     $formset = $formset ? "{$separator}formset=$formset" : '';
@@ -50,16 +48,16 @@ function PMA_Process_formset(FormDisplay $form_display)
     <div class="error">
         <h4><?php echo __('Warning') ?></h4>
         <?php echo __('Submitted form contains errors') ?><br />
-        <a href="<?php echo URL::getCommon() , $separator ?>page=<?php echo $page , $formset , $formId , $separator ?>mode=revert">
+        <a href="<?php echo PMA_URL_getCommon() . $separator ?>page=<?php echo $page . $formset . $formId . $separator ?>mode=revert">
             <?php echo __('Try to revert erroneous fields to their default values') ?>
         </a>
     </div>
-    <?php echo $form_display->displayErrors() ?>
-    <a class="btn" href="index.php<?php echo URL::getCommon() ?>">
+    <?php $form_display->displayErrors() ?>
+    <a class="btn" href="index.php<?php echo PMA_URL_getCommon() ?>">
         <?php echo __('Ignore errors') ?>
     </a>
     &nbsp;
-    <a class="btn" href="<?php echo URL::getCommon() , $separator ?>page=<?php echo $page , $formset , $formId , $separator ?>mode=edit">
+    <a class="btn" href="<?php echo PMA_URL_getCommon() . $separator ?>page=<?php echo $page . $formset . $formId . $separator ?>mode=edit">
         <?php echo __('Show form') ?>
     </a>
     <?php
@@ -74,9 +72,10 @@ function PMA_generateHeader303()
 {
     // drop post data
     header('HTTP/1.1 303 See Other');
-    header('Location: index.php' . URL::getCommon());
+    header('Location: index.php');
 
     if (!defined('TESTSUITE')) {
         exit;
     }
 }
+?>

@@ -5,7 +5,6 @@
  *
  * @package PhpMyAdmin
  */
-use PMA\libraries\Sanitize;
 
 if (! defined('PHPMYADMIN')) {
     exit;
@@ -54,6 +53,6 @@ if (! defined('TESTSUITE')) {
 </head>
 <body>
 <h1>phpMyAdmin - <?php echo $error_header; ?></h1>
-<p><?php echo Sanitize::sanitize($error_message); ?></p>
+<p><?php echo PMA_sanitize($error_message); ?></p>
 </body>
 </html>

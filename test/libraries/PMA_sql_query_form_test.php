@@ -6,20 +6,24 @@
  * @package PhpMyAdmin-test
  */
 
-use PMA\libraries\Encoding;
-use PMA\libraries\Theme;
-use PMA\libraries\URL;
-
 //the following definition should be used globally
 $GLOBALS['server'] = 0;
 
 /*
  * Include to test.
 */
-
+require_once 'libraries/Util.class.php';
+require_once 'libraries/php-gettext/gettext.inc';
+require_once 'libraries/url_generating.lib.php';
 require_once 'libraries/relation.lib.php';
+require_once 'libraries/Theme.class.php';
+require_once 'libraries/Message.class.php';
+require_once 'libraries/sanitizing.lib.php';
+require_once 'libraries/sqlparser.lib.php';
+require_once 'libraries/js_escape.lib.php';
 require_once 'libraries/database_interface.inc.php';
 require_once 'libraries/sql_query_form.lib.php';
+require_once 'libraries/kanji-encoding.lib.php';
 require_once 'libraries/mysql_charsets.inc.php';
 
 /**
@@ -43,6 +47,7 @@ class PMA_SqlQueryForm_Test extends PHPUnit_Framework_TestCase
         $GLOBALS['PMA_PHP_SELF'] = PMA_getenv('PHP_SELF');
         $GLOBALS['db'] = "PMA_db";
         $GLOBALS['table'] = "PMA_table";
+        $GLOBALS['pmaThemeImage'] = 'image';
         $GLOBALS['text_dir'] = "text_dir";
 
         $GLOBALS['cfg']['GZipDump'] = false;
@@ -52,23 +57,19 @@ class PMA_SqlQueryForm_Test extends PHPUnit_Framework_TestCase
         $GLOBALS['cfg']['TextareaAutoSelect'] = true;
         $GLOBALS['cfg']['TextareaRows'] = 100;
         $GLOBALS['cfg']['TextareaCols'] = 11;
-        $GLOBALS['cfg']['DefaultTabDatabase'] = "structure";
+        $GLOBALS['cfg']['DefaultTabDatabase'] = "default_database";
         $GLOBALS['cfg']['RetainQueryBox'] = true;
         $GLOBALS['cfg']['ActionLinksMode'] = 'both';
-        $GLOBALS['cfg']['DefaultTabTable'] = 'browse';
-        $GLOBALS['cfg']['CodemirrorEnable'] = true;
-        $GLOBALS['cfg']['DefaultForeignKeyChecks'] = 'default';
 
         //_SESSION
         $_SESSION['relation'][0] = array(
-            'PMA_VERSION' => PMA_VERSION,
             'table_coords' => "table_name",
             'displaywork' => 'displaywork',
             'db' => "information_schema",
             'table_info' => 'table_info',
             'relwork' => 'relwork',
             'relation' => 'relation',
-            'bookmarkwork' => false,
+            'bookmarkwork' => 'bookmarkwork',
         );
         //$GLOBALS
         $GLOBALS['cfg']['Server']['user'] = "user";
@@ -76,9 +77,11 @@ class PMA_SqlQueryForm_Test extends PHPUnit_Framework_TestCase
         $GLOBALS['cfg']['Server']['bookmarktable'] = "bookmarktable";
 
         //$_SESSION
+        $_SESSION['PMA_Theme'] = PMA_Theme::load('./themes/pmahomme');
+        $_SESSION['PMA_Theme'] = new PMA_Theme();
 
         //Mock DBI
-        $dbi = $this->getMockBuilder('PMA\libraries\DatabaseInterface')
+        $dbi = $this->getMockBuilder('PMA_DatabaseInterface')
             ->disableOriginalConstructor()
             ->getMock();
 
@@ -98,6 +101,42 @@ class PMA_SqlQueryForm_Test extends PHPUnit_Framework_TestCase
             ->will($this->returnValue($getColumns));
 
         $GLOBALS['dbi'] = $dbi;
+    }
+
+    /**
+     * Test for PMA_getHtmlForSqlQueryFormUpload
+     *
+     * @return void
+     */
+    public function testPMAGetHtmlForSqlQueryFormUpload()
+    {
+        //Call the test function
+        $html = PMA_getHtmlForSqlQueryFormUpload();
+
+        //validate 1: Browse your computer
+        $this->assertContains(
+            __('Browse your computer:'),
+            $html
+        );
+
+        //validate 2: $GLOBALS['max_upload_size']
+        $this->assertContains(
+            PMA_Util::getFormattedMaximumUploadSize($GLOBALS['max_upload_size']),
+            $html
+        );
+        $this->assertContains(
+            PMA_Util::generateHiddenMaxFileSize($GLOBALS['max_upload_size']),
+            $html
+        );
+
+        //validate 3: Dropdown Box
+        $this->assertContains(
+            PMA_generateCharsetDropdownBox(
+                PMA_CSDROPDOWN_CHARSET,
+                'charset_of_file', null, 'utf8', false
+            ),
+            $html
+        );
     }
 
     /**
@@ -126,7 +165,7 @@ class PMA_SqlQueryForm_Test extends PHPUnit_Framework_TestCase
 
         //validate 3: showMySQLDocu
         $this->assertContains(
-            PMA\libraries\Util::showMySQLDocu('SELECT'),
+            PMA_Util::showMySQLDocu('SELECT'),
             $html
         );
 
@@ -172,7 +211,6 @@ class PMA_SqlQueryForm_Test extends PHPUnit_Framework_TestCase
     {
         //Call the test function
         $GLOBALS['is_upload'] = true;
-        $GLOBALS['lang'] = 'ja';
         $query = "select * from PMA";
         $html = PMA_getHtmlForSqlQueryForm($query);
 
@@ -199,7 +237,7 @@ class PMA_SqlQueryForm_Test extends PHPUnit_Framework_TestCase
         $table  = $GLOBALS['table'];
         $db     = $GLOBALS['db'];
         $this->assertContains(
-            URL::getHiddenInputs($db, $table),
+            PMA_URL_getHiddenInputs($db, $table),
             $html
         );
 
@@ -210,11 +248,10 @@ class PMA_SqlQueryForm_Test extends PHPUnit_Framework_TestCase
             $html
         );
 
-        //validate 6: Kanji encoding form
+        //validate 6: PMA_Kanji_encodingForm
         $this->assertContains(
-            Encoding::kanjiEncodingForm(),
+            PMA_Kanji_encodingForm(),
             $html
         );
-        $GLOBALS['lang'] = 'en';
     }
 }

@@ -5,14 +5,14 @@
  *
  * @package PhpMyAdmin-Setup
  */
-use PMA\libraries\config\FormDisplay;
-use PMA\setup\lib\ConfigGenerator;
-use PMA\libraries\URL;
 
 /**
  * Core libraries.
  */
 require './lib/common.inc.php';
+require_once './libraries/config/Form.class.php';
+require_once './libraries/config/FormDisplay.class.php';
+require_once './setup/lib/ConfigGenerator.class.php';
 
 require './libraries/config/setup.forms.php';
 
@@ -32,7 +32,7 @@ if (PMA_ifSetOr($_POST['submit_clear'], '')) {
     $GLOBALS['ConfigFile']->resetConfigData();
     // drop post data
     header('HTTP/1.1 303 See Other');
-    header('Location: index.php' . URL::getCommon());
+    header('Location: index.php');
     exit;
 } elseif (PMA_ifSetOr($_POST['submit_download'], '')) {
     //
@@ -50,7 +50,7 @@ if (PMA_ifSetOr($_POST['submit_clear'], '')) {
         ConfigGenerator::getConfigFile($GLOBALS['ConfigFile'])
     );
     header('HTTP/1.1 303 See Other');
-    header('Location: index.php' . URL::getCommon() . '&action_done=config_saved');
+    header('Location: index.php' . PMA_URL_getCommon() . '&action_done=config_saved');
     exit;
 } elseif (PMA_ifSetOr($_POST['submit_load'], '')) {
     //
@@ -60,7 +60,7 @@ if (PMA_ifSetOr($_POST['submit_clear'], '')) {
     include_once $config_file_path;
     $GLOBALS['ConfigFile']->setConfigData($cfg);
     header('HTTP/1.1 303 See Other');
-    header('Location: index.php' . URL::getCommon());
+    header('Location: index.php');
     exit;
 } elseif (PMA_ifSetOr($_POST['submit_delete'], '')) {
     //
@@ -68,13 +68,14 @@ if (PMA_ifSetOr($_POST['submit_clear'], '')) {
     //
     @unlink($config_file_path);
     header('HTTP/1.1 303 See Other');
-    header('Location: index.php' . URL::getCommon());
+    header('Location: index.php');
     exit;
 } else {
     //
     // Show generated config file in a <textarea>
     //
     header('HTTP/1.1 303 See Other');
-    header('Location: index.php' . URL::getCommon() . '&page=config');
+    header('Location: index.php' . PMA_URL_getCommon() . '&page=config');
     exit;
 }
+?>
